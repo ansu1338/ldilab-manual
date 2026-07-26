@@ -19,9 +19,15 @@ If the author use `groundhog` or any package management systems other than `renv
 
 - main.R uses `renv`, a package dependency tool. It lets us capture the precise version of the packages we use for each replication case. If authors use renv, main.R will detect it and activate the authors’ environment, allowing us to use the packages that worked for them (at least theoretically - there can still be package issues in or outside of renv as packages are updated, removed from CRAN, etc). If the authors did not use renv (more common), then main.R will create a new blank environment for our replication. 
 
+:::{note}
+
+If an author lockfile is found, `rootdir` will be automatically switched to that location.
+
+:::
+
 ## How do I know if the authors used renv?
 
-- renv creates several distinctive files and folders, most importantly `renv.lock`, which is the file that actually specifies the version of R and any packages the authors used. The code in main.R will look for renv.lock files already in your repository. If it can't find one, it will create a new renv environment for your project. If you see the authors’ renv.lock in the repository, but main.R didn't find it, try adjusting the search parameters provided in main.R. This will tell the code to look at more of your repository for the renv.lock.
+- renv creates several distinctive files and folders, most importantly `renv.lock`, which is the file that actually specifies the version of R and any packages the authors used. The code in main.R will look for renv.lock files already in your repository. If it can't find one, it will create a new renv environment for your project. If you see the authors’ renv.lock in the repository, but main.R didn't find it, try adjusting the search parameters provided in main.R. `lockfile.search.up` and `lockfile.search.down` let you search mutiple directory levels up/down for the authors' renv.lock.
 
 ## Explaining template-main.R
 
@@ -46,7 +52,7 @@ readme.libraries <- c("ggplot2","nonsenseR")
 In some cases, authors provide us privately with data that is not part of the public replication package (the part on openICPSR is generally public). We put this on the L-drive, or what used to be called the S-drive. Put the location of that here, if any:
 
 ```
-s-drive <- "L:/Workspace/aearep-9999-implicit-nda"
+sdrive <- "L:/Workspace/aearep-9999-implicit-nda"
 ```
 
 :::{note}
@@ -54,7 +60,7 @@ s-drive <- "L:/Workspace/aearep-9999-implicit-nda"
 If you are working on Windows (e.g. CCSS-Cloud) then you would need to use `/` or `\\` to write filepaths or use the file.path() function. So, for example, the above would become:
 
 ```
-s-drive <- "L:\\Workspace\\aearep-9999-implicit-nda"
+sdrive <- "L:\\Workspace\\aearep-9999-implicit-nda"
 ```
 
 :::
@@ -65,7 +71,7 @@ Wherever the author later references the confidential data, you can insert this 
 # original author reference
 # ols.data <- readRDS("data/confidential/analysis.Rds")
 # you change it to
-ols.data <- readRDS(file.path(s-drive,"data/confidential/analysis.Rds"))
+ols.data <- readRDS(file.path(sdrive,"data/confidential/analysis.Rds"))
 ```
 
 
@@ -74,13 +80,13 @@ ols.data <- readRDS(file.path(s-drive,"data/confidential/analysis.Rds"))
 `main.R` creates a subdirectory for log files, but does not automatically create the log file (in contrast to Stata). Here, you should add any additional directories that your debugging identifies as being necessary. Do write any path names with `/`, not `\`, and leave the directory names already listed untouched.
 
 ```
-create.paths <- c("logs","libraries")
+create.paths <- c("logs")
 ```
 
 For instance, if the authors state that output should be written to "outputs", you can add
 
 ```
-create.paths <- c("logs","libraries","outputs")
+create.paths <- c("logs","outputs")
 ```
 
 The `main.R` will create these directories if they do not exist, later on.
@@ -166,7 +172,7 @@ If you have to re-run this multiple times, and add on packages, this might get o
 
 ### Installing packages
 
-If the author's code does not provide install commands, you will need to add any missing packages to a [particular location](https://github.com/AEADataEditor/replication-template-development/blob/development/template-config.R#L30) in the `main.R`:
+If the author's code does not provide install commands, you will need to add any missing packages to a particular location in the `main.R`:
 
 ```R
 readme.libraries <- c() #ex: c("paletteer", "viridis")
@@ -178,6 +184,8 @@ This will then install the package into the project's renv library.
 
 We require system information as part of the replication package. This is because some commands are sensitive to the OS, R version, machine type, etc. We use the `sessionInfo()` command to get this information. 
 
+### Creating replicator renv.lock
+If main.R (and thus all included author scripts) runs to completion, it will take a snapshot of the current environment and save it to `renv.lock.replicator_snapshot`. We use package `here` to dynamically set rootdir before we activate any renv environments, so you will get a prompt asking if you would like to add it to the renv.lock. You should **not** add it, as it is not needed to run the authors' code. Double-check that the only package listed in the message is `here`; if there are others, the installations are incorrectly located.
 
 ## How to use main.R
 
