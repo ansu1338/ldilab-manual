@@ -185,7 +185,7 @@ This will then install the package into the project's renv library.
 We require system information as part of the replication package. This is because some commands are sensitive to the OS, R version, machine type, etc. We use the `sessionInfo()` command to get this information. 
 
 ### Creating replicator renv.lock
-If main.R (and thus all included author scripts) runs to completion, it will take a snapshot of the current environment and save it to `renv.lock.replicator_snapshot`. We use package `here` to dynamically set rootdir before we activate any renv environments, so you will get a prompt asking if you would like to add it to the renv.lock. You should **not** add it, as it is not needed to run the authors' code. Double-check that the only package listed in the message is `here`; if there are others, the installations are incorrectly located.
+If main.R (and thus all included author scripts) runs to completion, it will take a snapshot of the current environment and save it to `renv.lock.replicator_snapshot`. We use package `here` to dynamically set rootdir before we run any other scripts, so it will be included in the lock file. 
 
 ## How to use main.R
 
@@ -215,3 +215,63 @@ If there are lines such as `rm(ls())` in the various files provided by the autho
 # rm(ls())
 ... (rest of code)
 ```
+
+## Using main.R on BioHPC through SBATCH
+
+### R library is not writable
+
+```
+Warning in install.packages("renv") :
+  'lib = "/programs/R-4.4.2/lib64/R/library"' is not writable
+Error in install.packages("renv") : unable to install packages
+Execution halted
+```
+
+To fix this error, run these 2 commands in terminal:
+
+```
+mkdir -p ~/R/library
+echo 'R_LIBS_USER=~/R/library' >> ~/.Renviron
+```
+
+Next, in the main.R script lock file detection loop (around lines 232 and 240), change out both ` if (!requireNamespace("renv", quietly = TRUE)) install.packages("renv")` for 
+
+```
+ if (!requireNamespace("renv", quietly = TRUE)) install.packages("renv", lib = Sys.getenv("R_LIBS_USER"))
+```
+
+This will create your own personal library into which you have permission to install. You should only need to do this once, not every case.
+
+
+### The author has a lock file but the script did not detect it
+
+This error and the next error both stem from the same cause: here() only searches upward from your working directory and stops at the first match. The fix depends on whether it found nothing (adjust your cd in sbatch) or whether it found the wrong file (add a closer .here).
+
+Set the root directory in the SBATCH script to ensure the detection loop starts at the correct level. 
+
+Example:
+
+```
+cd /home2/ecco_lv39/Workspace/aearep-9206/247050/replication
+R CMD BATCH code/master.R main.$(date +%F_%H-%M-%S).log
+```
+
+:::{note}
+
+The root directory here is aearep-9206/247050/replication, not aearep-9206!
+
+:::
+
+
+### Rootdir is not setting correctly
+
+Make sure you set your .here file correctly in terminal before running your SBATCH script.
+
+Example:
+
+```
+touch /home2/ecco_lv39/Workspace/aearep-8896/244480/ggp_replication/.here
+```
+
+
+
